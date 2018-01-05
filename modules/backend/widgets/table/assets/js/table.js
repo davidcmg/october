@@ -75,6 +75,9 @@
         // Navigation helper
         this.navigation = null
 
+        // Search helper
+        this.search = null
+
         // Number of records added or deleted during the session
         this.recordsAddedOrDeleted = 0
 
@@ -102,6 +105,7 @@
 
         // Initialize helpers
         this.navigation = new $.oc.table.helper.navigation(this)
+        this.search = new $.oc.table.helper.search(this)
 
         // Create the UI
         this.buildUi()
@@ -204,8 +208,9 @@
         this.tableContainer.setAttribute('class', 'table-container')
 
         // Build the toolbar
-        if (this.options.toolbar)
+        if (this.options.toolbar) {
             this.buildToolbar()
+        }
 
         // Build the headers table
         this.tableContainer.appendChild(this.buildHeaderTable())
@@ -213,55 +218,42 @@
         // Append the table container to the element
         this.el.insertBefore(this.tableContainer, this.el.children[0])
 
-        if (!this.options.height)
+        if (!this.options.height) {
             this.dataTableContainer = this.tableContainer
-        else 
+        }
+        else {
             this.dataTableContainer = this.buildScrollbar()
+        }
 
         // Build the data table
         this.updateDataTable()
     }
 
     Table.prototype.buildToolbar = function() {
-        if (!this.options.adding && !this.options.deleting)
+        if (!this.options.adding && !this.options.deleting) {
             return
+        }
 
-        this.toolbar = document.createElement('div')
-        this.toolbar.setAttribute('class', 'toolbar')
+        this.toolbar = $($('[data-table-toolbar]', this.el).html()).appendTo(this.tableContainer).get(0)
 
-        if (this.options.adding) {
-            var addBelowButton = document.createElement('a')
-            addBelowButton.setAttribute('class', 'btn table-icon add-table-row-below')
-            addBelowButton.setAttribute('data-cmd', 'record-add-below')
-            this.toolbar.appendChild(addBelowButton)
-
+        if (!this.options.adding) {
+            $('[data-cmd^="record-add"]', this.toolbar).remove()
+        }
+        else {
             if (this.navigation.paginationEnabled() || !this.options.rowSorting) {
                 // When the pagination is enabled, or sorting is disabled,
                 // new records can only be added to the bottom of the
-                // table.
-                addBelowButton.textContent = this.options.btnAddRowLabel
-            } else {
-                addBelowButton.textContent = this.options.btnAddRowBelowLabel
-
-                var addAboveButton = document.createElement('a')
-                addAboveButton.setAttribute('class', 'btn table-icon add-table-row-above')
-                addAboveButton.textContent = 'Add row above'
-                addAboveButton.setAttribute('data-cmd', 'record-add-above')
-                this.toolbar.appendChild(addAboveButton)
+                // table, so just show the general "Add row" button.
+                $('[data-cmd=record-add-below], [data-cmd=record-add-above]', this.toolbar).remove()
+            }
+            else {
+                $('[data-cmd=record-add]', this.toolbar).remove()
             }
         }
 
-        if (this.options.deleting) {
-            var deleteButton = document.createElement('a')
-
-            deleteButton.setAttribute('class', 'btn table-icon delete-table-row')
-            deleteButton.textContent = this.options.btnDeleteRowLabel
-
-            deleteButton.setAttribute('data-cmd', 'record-delete')
-            this.toolbar.appendChild(deleteButton)
+        if (!this.options.deleting) {
+            $('[data-cmd="record-delete"]', this.toolbar).remove()
         }
-
-        this.tableContainer.appendChild(this.toolbar)
     }
 
     Table.prototype.buildScrollbar = function() {
@@ -313,7 +305,7 @@
 
         this.unfocusTable()
 
-        this.fetchRecords(function onUpdateDataTableSuccess(records, totalCount){
+        this.fetchRecords(function onUpdateDataTableSuccess(records, totalCount) {
             self.buildDataTable(records, totalCount)
 
             if (onSuccess)
@@ -321,6 +313,11 @@
 
             if (totalCount == 0)
                 self.addRecord('above', true)
+
+            self.$el.trigger('oc.tableUpdateData', [
+                records,
+                totalCount
+            ])
 
             self = null
         })
@@ -395,6 +392,9 @@
 
         // Update the pagination links
         this.navigation.buildPagination(totalCount)
+
+        // Update the search form
+        this.search.buildSearchForm()
     }
 
     Table.prototype.formatDataContainerValue = function(value) {
@@ -410,17 +410,27 @@
     }
 
     Table.prototype.fetchRecords = function(onSuccess) {
-        this.dataSource.getRecords(
-            this.navigation.getPageFirstRowOffset(),
-            this.options.recordsPerPage,
-            onSuccess
-        )
+        if (this.search.hasQuery()) {
+            this.dataSource.searchRecords(
+                this.search.getQuery(),
+                this.navigation.getPageFirstRowOffset(),
+                this.options.recordsPerPage,
+                onSuccess
+            )
+        }
+        else {
+            this.dataSource.getRecords(
+                this.navigation.getPageFirstRowOffset(),
+                this.options.recordsPerPage,
+                onSuccess
+            )
+        }
     }
 
     Table.prototype.updateScrollbar = function() {
         if (!this.options.height)
             return
-    
+
         $(this.dataTableContainer.parentNode).data('oc.scrollbar').update()
     }
 
@@ -453,7 +463,7 @@
     Table.prototype.commitEditedRow = function() {
         if (this.editedRowKey === null)
             return
-        
+
         var editedRow = this.dataTable.querySelector('tr[data-row="'+this.editedRowKey+'"]')
         if (!editedRow)
             return
@@ -526,7 +536,7 @@
                 this.elementAddClass(this.activeCell, 'active')
         }
 
-        // If the cell belongs to other row than the currently edited, 
+        // If the cell belongs to other row than the currently edited,
         // commit currently edited row to the data source. Update the
         // currently edited row key.
         var rowKey = this.getCellRowKey(cellElement)
@@ -583,7 +593,7 @@
             recordData = {},
             self = this
 
-        recordData[keyColumn] = -1*this.recordsAddedOrDeleted
+        recordData[keyColumn] = -1 * this.recordsAddedOrDeleted
 
         this.$el.trigger('oc.tableNewRow', [
             recordData
@@ -627,11 +637,12 @@
         var keyColumn = this.options.keyColumn,
             newRecordData = {}
 
-        newRecordData[keyColumn] = -1*this.recordsAddedOrDeleted
+        newRecordData[keyColumn] = -1 * this.recordsAddedOrDeleted
 
-        this.dataSource.deleteRecord(key, 
+        this.dataSource.deleteRecord(
+            key,
             newRecordData,
-            this.navigation.getPageFirstRowOffset(), 
+            this.navigation.getPageFirstRowOffset(),
             this.options.recordsPerPage,
             function onDeleteRecordDataTableSuccess(records, totalCount) {
                 self.buildDataTable(records, totalCount)
@@ -720,6 +731,9 @@
         if (this.navigation.onClick(ev) === false)
             return
 
+        if (this.search.onClick(ev) === false)
+            return
+
         for (var i = 0, len = this.options.columns.length; i < len; i++) {
             var column = this.options.columns[i].key
 
@@ -742,7 +756,8 @@
             if (!ev.shiftKey) {
                 // alt+a - add record below
                 this.addRecord('below')
-            } else {    
+            }
+            else {
                 // alt+shift+a - add record above
                 this.addRecord('above')
             }
@@ -765,8 +780,13 @@
             this.cellProcessors[column].onKeyDown(ev)
         }
 
-        if (this.navigation.onKeydown(ev) === false)
+        if (this.navigation.onKeydown(ev) === false) {
             return
+        }
+
+        if (this.search.onKeydown(ev) === false) {
+            return
+        }
     }
 
     Table.prototype.onFormSubmit = function(ev, data) {
@@ -778,9 +798,9 @@
                 return
             }
 
-            var fieldName = this.options.alias.indexOf('[') > -1 ? 
-                this.options.alias + '[TableData]' :
-                this.options.alias + 'TableData';
+            var fieldName = this.options.fieldName.indexOf('[') > -1
+                ? this.options.fieldName + '[TableData]'
+                : this.options.fieldName + 'TableData'
 
             data.options.data[fieldName] = this.dataSource.getAllData()
         }
@@ -790,10 +810,12 @@
         var target = this.getEventTarget(ev),
             cmd = target.getAttribute('data-cmd')
 
-        if (!cmd)
+        if (!cmd) {
             return
+        }
 
         switch (cmd) {
+            case 'record-add':
             case 'record-add-below':
                 this.addRecord('below')
             break
@@ -1088,12 +1110,10 @@
         adding: true,
         deleting: true,
         toolbar: true,
+        searching: false,
         rowSorting: false,
         height: false,
-        dynamicHeight: false,
-        btnAddRowLabel: 'Add row',
-        btnAddRowBelowLabel: 'Add row below',
-        btnDeleteRowLabel: 'Delete row'
+        dynamicHeight: false
     }
 
     // TABLE PLUGIN DEFINITION
@@ -1113,7 +1133,7 @@
             if (typeof option == 'string') result = data[option].apply(data, args)
             if (typeof result != 'undefined') return false
         })
-        
+
         return result ? result : this
     }
 

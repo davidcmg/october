@@ -48,7 +48,53 @@ return [
 
     'alert' => [
         'confirm_button_text' => 'OK',
-        'cancel_button_text' => 'Mégsem'
-    ]
+        'cancel_button_text' => 'Mégsem',
+        'widget_remove_confirm' => 'Valóban törölni akarja?'
+    ],
 
+    'datepicker' => [
+        'previousMonth' => 'Előző hónap',
+        'nextMonth' => 'Következő hónap',
+        'months' => ['január', 'február', 'március', 'április', 'május', 'június', 'július', 'augusztus', 'szeptember', 'október', 'november', 'december'],
+        'weekdays' => ['vasárnap', 'hétfő', 'kedd', 'szerda', 'csütörtök', 'péntek', 'szombat'],
+        'weekdaysShort' => ['va', 'hé', 'ke', 'sze', 'cs', 'pé', 'szo']
+    ],
+
+    'filter' => [
+        'group' => [
+            'all' => 'összes'
+        ],
+        'dates' => [
+            'all' => 'összes',
+            'filter_button_text' => 'Szűrés',
+            'reset_button_text'  => 'Alaphelyzet',
+            'date_placeholder' => 'Dátum',
+            'after_placeholder' => 'Kezdete',
+            'before_placeholder' => 'Vége'
+        ],
+        'numbers' => [
+            'all' => 'összes',
+            'filter_button_text' => 'Szűrés',
+            'reset_button_text'  => 'Alaphelyzet',
+            'min_placeholder' => 'Minimum',
+            'max_placeholder' => 'Maximum'
+        ]
+    ],
+
+    'eventlog' => [
+        'show_stacktrace' => 'Részletek',
+        'hide_stacktrace' => 'Rejtés',
+        'tabs' => [
+            'formatted' => 'Formázott',
+            'raw' => 'Tömörített',
+        ],
+        'editor' => [
+            'title' => 'Forráskód szerkesztő',
+            'description' => 'Az operációs rendszert úgy kell beállítani, hogy figyelembe vegye az URL sémát.',
+            'openWith' => 'Megnyitás mint',
+            'remember_choice' => 'Kiválasztott beállítások megjegyzése ebben a munkamenetben',
+            'open' => 'Megnyitás',
+            'cancel' => 'Mégsem'
+        ]
+    ]
 ];

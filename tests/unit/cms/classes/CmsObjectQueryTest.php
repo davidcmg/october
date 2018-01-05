@@ -1,10 +1,20 @@
 <?php
 
 use Cms\Classes\Page;
+use Cms\Classes\Theme;
 use Cms\Classes\Layout;
+use October\Rain\Halcyon\Model;
 
 class CmsObjectQueryTest extends TestCase
 {
+    public function setUp()
+    {
+        parent::setUp();
+
+        Model::clearBootedModels();
+        Model::flushEventListeners();
+    }
+
     public function testWhere()
     {
         $page = Page::where('layout', 'caramba')->first();
@@ -33,7 +43,7 @@ class CmsObjectQueryTest extends TestCase
     {
         include_once base_path() . '/tests/fixtures/plugins/october/tester/components/Archive.php';
 
-        $pages = Page::withComponent('testArchive', function($component) {
+        $pages = Page::withComponent('testArchive', function ($component) {
             return $component->property('posts-per-page') == '69';
         })->all();
 
@@ -55,8 +65,10 @@ class CmsObjectQueryTest extends TestCase
             "blog-archive",
             "blog-post",
             "code-namespaces",
+            "code-namespaces-aliases",
             "component-custom-render",
             "component-partial",
+            "component-partial-alias-override",
             "component-partial-nesting",
             "component-partial-override",
             "cycle-test",
@@ -90,7 +102,10 @@ class CmsObjectQueryTest extends TestCase
             "placeholder",
             "sidebar",
         ], $layouts);
+    }
 
+    public function testListsNonExistentTheme()
+    {
         $pages = Page::inTheme('NON_EXISTENT_THEME')->lists('baseFileName');
         $this->assertEmpty($pages);
     }

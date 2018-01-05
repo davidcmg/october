@@ -1,11 +1,8 @@
 <?php namespace Backend\Classes;
 
 use Str;
-use File;
-use Yaml;
-use Closure;
-use Illuminate\Container\Container;
 use System\Classes\PluginManager;
+use Event;
 
 /**
  * Widget manager
@@ -18,17 +15,17 @@ class WidgetManager
     use \October\Rain\Support\Traits\Singleton;
 
     /**
-     * @var array An array of report widgets.
+     * @var array An array of form widgets. Stored in the form of ['FormWidgetClass' => $formWidgetInfo].
      */
     protected $formWidgets;
 
     /**
-     * @var array Cache of report widget registration callbacks.
+     * @var array Cache of form widget registration callbacks.
      */
     protected $formWidgetCallbacks = [];
 
     /**
-     * @var array An array of report widgets.
+     * @var array An array of form widgets keyed by their code. Stored in the form of ['formwidgetcode' => 'FormWidgetClass'].
      */
     protected $formWidgetHints;
 
@@ -95,13 +92,17 @@ class WidgetManager
     }
 
     /**
-     * Registers a single form form widget.
+     * Registers a single form widget.
      * @param string $className Widget class name.
-     * @param array $widgetInfo Registration information, can contain an 'code' key.
+     * @param array $widgetInfo Registration information, can contain a `code` key.
      * @return void
      */
     public function registerFormWidget($className, $widgetInfo = null)
     {
+        if (!is_array($widgetInfo)) {
+            $widgetInfo = ['code' => $widgetInfo];
+        }
+
         $widgetCode = isset($widgetInfo['code']) ? $widgetInfo['code'] : null;
 
         if (!$widgetCode) {
@@ -115,14 +116,11 @@ class WidgetManager
     /**
      * Manually registers form widget for consideration.
      * Usage:
-     * <pre>
-     *   WidgetManager::registerFormWidgets(function($manager){
-     *       $manager->registerFormWidget('Backend\FormWidgets\CodeEditor', [
-     *           'name' => 'Code editor',
-     *           'code'  => 'codeeditor'
-     *       ]);
-     *   });
-     * </pre>
+     *
+     *     WidgetManager::registerFormWidgets(function($manager){
+     *         $manager->registerFormWidget('Backend\FormWidgets\CodeEditor', 'codeeditor');
+     *     });
+     *
      */
     public function registerFormWidgets(callable $definitions)
     {
@@ -131,7 +129,7 @@ class WidgetManager
 
     /**
      * Returns a class name from a form widget code
-     * Normalizes a class name or converts an code to it's class name.
+     * Normalizes a class name or converts an code to its class name.
      * @param string $name Class name or form widget code.
      * @return string The class name resolved, or the original name.
      */
@@ -191,6 +189,23 @@ class WidgetManager
             }
         }
 
+        /**
+         * @event system.reportwidgets.extendItems
+         * Enables adding or removing report widgets.
+         *
+         * You will have access to the WidgetManager instance and be able to call the appropiate methods
+         * $manager->registerReportWidget();
+         * $manager->removeReportWidget();
+         *
+         * Example usage:
+         *
+         *     Event::listen('system.reportwidgets.extendItems', function($manager) {
+         *          $manager->removeReportWidget('Acme\ReportWidgets\YourWidget');
+         *     });
+         *
+         */
+        Event::fire('system.reportwidgets.extendItems', [$this]);
+
         return $this->reportWidgets;
     }
 
@@ -205,17 +220,32 @@ class WidgetManager
     /**
      * Manually registers report widget for consideration.
      * Usage:
-     * <pre>
-     *   WidgetManager::registerReportWidgets(function($manager){
-     *       $manager->registerReportWidget('RainLab\GoogleAnalytics\ReportWidgets\TrafficOverview', [
-     *           'name'=>'Google Analytics traffic overview',
-     *           'context'=>'dashboard'
-     *       ]);
-     *   });
-     * </pre>
+     *
+     *     WidgetManager::registerReportWidgets(function($manager){
+     *         $manager->registerReportWidget('RainLab\GoogleAnalytics\ReportWidgets\TrafficOverview', [
+     *             'name' => 'Google Analytics traffic overview',
+     *             'context' => 'dashboard'
+     *         ]);
+     *     });
+     *
      */
     public function registerReportWidgets(callable $definitions)
     {
         $this->reportWidgetCallbacks[] = $definitions;
     }
+
+    /**
+     * Remove a registered ReportWidget.
+     * @param string $className Widget class name.
+     * @return void
+     */
+    public function removeReportWidget($className)
+    {
+        if (!$this->reportWidgets) {
+            throw new SystemException('Unable to remove a widget before widgets are loaded.');
+        }
+
+        unset($this->reportWidgets[$className]);
+    }
+
 }

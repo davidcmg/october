@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Database\Migrations\Migration;
+use October\Rain\Database\Schema\Blueprint;
+use October\Rain\Database\Updates\Migration;
 use Backend\Models\User as AdminModel;
 
 class DbBackendAddSuperuserFlag extends Migration
@@ -12,7 +12,7 @@ class DbBackendAddSuperuserFlag extends Migration
             $table->boolean('is_superuser')->default(false);
         });
 
-        AdminModel::all()->each(function($user) {
+        AdminModel::all()->each(function ($user) {
             if ($user->hasPermission('superuser')) {
                 $user->is_superuser = true;
                 $user->save();

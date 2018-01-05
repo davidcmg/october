@@ -16,7 +16,6 @@ use SplTempFileObject;
  */
 abstract class ExportModel extends Model
 {
-
     /**
      * Called when data is being exported.
      * The return value should be an array in the format of:
@@ -87,6 +86,7 @@ abstract class ExportModel extends Model
          * Parse options
          */
         $defaultOptions = [
+            'firstRowTitles' => true,
             'useOutput' => false,
             'fileName' => 'export.csv',
             'delimiter' => null,
@@ -101,6 +101,8 @@ abstract class ExportModel extends Model
          * Prepare CSV
          */
         $csv = CsvWriter::createFromFileObject(new SplTempFileObject);
+        
+        $csv->setOutputBOM(CsvWriter::BOM_UTF8);
 
         if ($options['delimiter'] !== null) {
             $csv->setDelimiter($options['delimiter']);
@@ -117,8 +119,10 @@ abstract class ExportModel extends Model
         /*
          * Add headers
          */
-        $headers = $this->getColumnHeaders($columns);
-        $csv->insertOne($headers);
+        if ($options['firstRowTitles']) {
+            $headers = $this->getColumnHeaders($columns);
+            $csv->insertOne($headers);
+        }
 
         /*
          * Add records
@@ -202,5 +206,4 @@ abstract class ExportModel extends Model
 
         return implode($delimeter, $newData);
     }
-
 }

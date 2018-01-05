@@ -49,15 +49,15 @@ abstract class PluginTestCase extends Illuminate\Foundation\Testing\TestCase
     public function setUp()
     {
         /*
+         * Force reload of October singletons
+         */
+        PluginManager::forgetInstance();
+        UpdateManager::forgetInstance();
+        
+        /*
          * Create application instance
          */
         parent::setUp();
-
-        /*
-         * Rebind Laravel container in October Singletons
-         */
-        UpdateManager::instance()->bindContainerObjects();
-        PluginManager::instance()->bindContainerObjects();
 
         /*
          * Ensure system is up to date
@@ -152,6 +152,21 @@ abstract class PluginTestCase extends Illuminate\Foundation\Testing\TestCase
     }
 
     /**
+     * Returns a plugin object from its code, useful for registering events, etc.
+     * @return PluginBase
+     */
+    protected function getPluginObject($code = null)
+    {
+        if ($code === null) {
+            $code = $this->guessPluginCodeFromTest();
+        }
+
+        if (isset($this->pluginTestCaseLoadedPlugins[$code])) {
+            return $this->pluginTestCaseLoadedPlugins[$code];
+        }
+    }
+
+    /**
      * The models in October use a static property to store their events, these
      * will need to be targeted and reset ready for a new test cycle.
      * Pivot models are an exception since they are internally managed.
@@ -187,7 +202,7 @@ abstract class PluginTestCase extends Illuminate\Foundation\Testing\TestCase
     {
         $reflect = new ReflectionClass($this);
         $path = $reflect->getFilename();
-        $basePath = plugins_path();
+        $basePath = $this->app->pluginsPath();
 
         $result = false;
 
